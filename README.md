@@ -10,12 +10,6 @@
 
 The application of Rao diversity metric to measure the environmental heterogeneity of specific immune cells.
 
-Please cite the paper below if you want to implement this approach:
-### Reference
-
-Lopez de Rodas M, Nagineni V, Ravi A, Datar IJ, Mino-Kenudson M, Corredor G, Barrera C, Behlman L, Rimm DL, Herbst RS, Madabhushi A, Riess JW, Velcheti V, Hellmann MD, Gainor J, Schalper KA. Role of tumor infiltrating lymphocytes and spatial immune heterogeneity in sensitivity to PD-1 axis blockers in non-small cell lung cancer. J Immunother Cancer. 2022 Jun;10(6):e004440. doi: 10.1136/jitc-2021-004440. PMID: 35649657; PMCID: PMC9161072.
-
-
 Main aspects of CellDiversityRaoce:
 * (describe here how the json files are generated).
 * Use of subtype of immune cells to extract spatial diversity features (use of Rao metric - [Spectral Rao](https://github.com/mattmar/spectralrao)).
@@ -43,9 +37,26 @@ Cell Diversity Rao consists of three segments.
 3. The plot or depiction in 2D of the spatial Rao features.
 
 ### Data preparation
+1. We unzip a testing json file located in the /data/ folder. The file is testing_image.zip. Inside the file that is used for testing the scripts is testing_image.json.
+2. The file has information related to the position of different type of cells, in this case we identified necrotic, neoplastic, inflammatory, connective and non-neoplastic epithelial cells. Also other type of position of cells can be used (e.g. subtype of immune cells such as CD4+, CD8+ and CD4+) as long as they are saved in the json format. Minor adjustments are neded to be saved as a csv for processing.
+
+3. The cell position and identification (x and y position and label 'cell type') are taken to be converted as raster (rasterize), a graphical representation of 2D. The spectralrao function is used to do so. Previously, a empty raster is created with specific number of rows and columns (matrix) so the same canvas is used for every type of cell or representation, as it is needed to be compared across, to obtain a true diversity measurement.
+4. The spectralrao function generates a rao matrix. In this example, we use the option of 'multidimension' and euclidean distance. The multi-dimension stands for taking into account different type of popultions of cells, calculating the Rao index across the diversity of cells. From this rao matrix, we can either plot it, save it, calculate statistical moments (e.g. mean or median of the matrix, density distribution).
+5. To plot the example, we use the spplot function. First, the rao matrix is re-rasterize and rescale (0,1). The dimenions are the same as the canvas, if more details is needed, the canvas size can be increased.
 
 ### Rao Feature extraction
-
+The rao matrix can is adjusted to be a vector and transposed. Any NaN values found are removed. Then the statistical moments can be calculated. This values are then representing each image or file or case.
+```R
+   # we transform the rao matrix as vector and transpose it.
+raomatrix2_trans <- as.vector(t(raomatrix2[[1]]))
+# we remove any nan values or are not taken into account
+raomatrix2_trans <- raomatrix2_trans[!is.na(raomatrix2_trans)]
+# sort the values for further processing
+raomatrix2_trans <- sort(raomatrix2_trans, decreasing = TRUE)
+# Calculate the basics statistics from the matrix
+# mean, median, max, min or standard deviation
+mean(raomatrix2_trans)
+   ```
 ### Plot of the Rao features and representation
    ``
    ```R
@@ -85,6 +96,12 @@ Future uses will be added once are found or observed.
 <!-- See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues). -->
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+### Reference
+Please cite the paper below if you want to implement this approach:
+
+Lopez de Rodas M, Nagineni V, Ravi A, Datar IJ, Mino-Kenudson M, Corredor G, Barrera C, Behlman L, Rimm DL, Herbst RS, Madabhushi A, Riess JW, Velcheti V, Hellmann MD, Gainor J, Schalper KA. Role of tumor infiltrating lymphocytes and spatial immune heterogeneity in sensitivity to PD-1 axis blockers in non-small cell lung cancer. J Immunother Cancer. 2022 Jun;10(6):e004440. doi: 10.1136/jitc-2021-004440. PMID: 35649657; PMCID: PMC9161072.
+
 
 <!-- LICENSE -->
 ## License
