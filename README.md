@@ -12,7 +12,7 @@ The application of Rao diversity metric to measure the environmental heterogenei
 
 Main aspects of CellDiversityRaoce:
 * (describe here how the json files are generated).
-* Use of subtype of immune cells to extract spatial diversity features (use of Rao metric - 1. [Spectral Rao]([https://github.com/fordanic/openslide-matlab](https://github.com/mattmar/spectralrao)).
+* Use of subtype of immune cells to extract spatial diversity features (use of Rao metric - [Spectral Rao](https://github.com/mattmar/spectralrao)).
 * Use of raster to depict the spatial patterns of the diversity features.
 * Generate single feature descriptor per file to be used for further analysis.
 
