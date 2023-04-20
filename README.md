@@ -3,7 +3,7 @@
 
 <!-- PROJECT SHIELDS -->
 <!-- https://github.com/Ileriayo/markdown-badges -->
-[![R version](https://img.shields.io/badge/R%3E%3D-4.2.3-6666ff.svg)](https://cran.r-project.org/)
+[![R version](https://img.shields.io/badge/R%3D-4.2.3-6666ff.svg)](https://cran.r-project.org/)
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
