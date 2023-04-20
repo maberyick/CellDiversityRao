@@ -10,6 +10,12 @@
 
 The application of Rao diversity metric to measure the environmental heterogeneity of specific immune cells.
 
+Please cite the paper below if you want to implement this approach:
+## References
+
+Lopez de Rodas M, Nagineni V, Ravi A, Datar IJ, Mino-Kenudson M, Corredor G, Barrera C, Behlman L, Rimm DL, Herbst RS, Madabhushi A, Riess JW, Velcheti V, Hellmann MD, Gainor J, Schalper KA. Role of tumor infiltrating lymphocytes and spatial immune heterogeneity in sensitivity to PD-1 axis blockers in non-small cell lung cancer. J Immunother Cancer. 2022 Jun;10(6):e004440. doi: 10.1136/jitc-2021-004440. PMID: 35649657; PMCID: PMC9161072.
+
+
 Main aspects of CellDiversityRaoce:
 * (describe here how the json files are generated).
 * Use of subtype of immune cells to extract spatial diversity features (use of Rao metric - [Spectral Rao](https://github.com/mattmar/spectralrao)).
