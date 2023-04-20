@@ -1,0 +1,74 @@
+---
+title: "wsi_cell_plots"
+output: html_document
+---
+# Load libraries
+```{r}
+library("rjson")
+library(gsubfn)
+library(ggplot2)
+library(plotly)
+library(hexbin)
+library(RColorBrewer)
+library(MASS)
+```
+
+# Interpret the data saved on the JSON files from Hovernet
+Read the file
+```{r}
+# Path to the testing json file
+result <- fromJSON(file = "./data/testing_image.json")
+name <- basename("./data/testing_image.json")
+```
+Adjust the file to a data frame
+```{r}
+datalist <- list()
+for (x in 1:length(result)){
+  # Type
+  type <- result[[x]]$properties$classification[[1]]
+  # Position
+  posx <- round(as.numeric(mean(do.call(rbind, result[[x]]$geometry$coordinates[[1]])[,1])))
+  posy <- round(as.numeric(mean(do.call(rbind, result[[x]]$geometry$coordinates[[1]])[,2])))
+  datalist[[x]] <- c("cell_ID" = x, 'x_pos' = posx, 'y_pos' = posy, 'cell_type' = type)
+}
+df <- data.frame(matrix(unlist(datalist), nrow=length(datalist), byrow=TRUE))
+colnames(df) <- c("cell_ID","x_pos", "y_pos","cell_type")
+
+df[df[4] == 'nolabe',4] <- 'No label'
+df[df[4] == 'neopla',4] <- 'Neoplastic'
+df[df[4] == 'inflam',4] <- 'Inflammatory'
+df[df[4] == 'connec',4] <- 'Connective'
+df[df[4] == 'necros',4] <- 'Dead'
+df[df[4] == 'no-neo',4] <- 'Non-Neoplastic Epithelial'
+```
+
+Put the datasets together on a plot
+```{r}
+sp <- ggplot(df, aes(x = as.numeric(x_pos), y = max(as.numeric(y_pos))-as.numeric(y_pos), color = cell_type)) + geom_point(size = 1.0)
+sd2 <- sp + scale_color_brewer(direction = 1, palette="Set3") + guides(colour = guide_legend(override.aes = list(size=4))) + theme_light() +geom_density_2d(adjust = 1/2, linewidth = 0.9, show.legend = TRUE) + guides(colour = guide_legend(override.aes = list(size=4))) + labs(y= "Y position", x = "X position", col = "Cell type")
+sd2
+```
+
+Density plot
+```{r}
+rf <- colorRampPalette(rev(brewer.pal(11,'Spectral')))
+r <- rf(512)
+# Create hexbin object and plot
+# it plots the accumulation of total cells per each hexagonal point. It shows also the total count and colored.
+hexbinplot(as.numeric(y_pos)~as.numeric(x_pos), data=df, colramp=rf)
+# Log option
+hexbinplot((max(as.numeric(y_pos))-as.numeric(y_pos))~as.numeric(x_pos), data=df, colramp=rf, trans=log, inv=exp)
+# Specify the min count that each hexagonal point has
+hexbinplot((max(as.numeric(y_pos))-as.numeric(y_pos))~as.numeric(x_pos), data=df, colramp=rf, mincnt=75, trans=log, inv=exp)
+
+# Plot the cells using a different approach for KDE2D
+# Adjust binning (interpolate - can be computationally intensive for large datasets)
+k <- kde2d(as.numeric(df$x_pos), (max(as.numeric(df$y_pos))-as.numeric(df$y_pos)), n=200)
+image(k, col=r)
+
+```
+plot the cells and interact with them (Live update - only run with plenty of memory)
+```{r}
+ggplotly(sd2) 
+```
+

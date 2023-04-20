@@ -1,0 +1,150 @@
+---
+title: "wsi_rao_feat"
+output: html_document
+---
+
+# Libraries
+```{r}
+library(nprcgenekeepr)
+library(vegan)
+library(hexbin)
+library(RColorBrewer)
+library(proxy)
+library(svMisc)
+library(progress)
+library(SYNCSA)
+library(psych)
+library(dplyr)
+library(survival)
+library(survminer)
+library(landscapemetrics)
+library(landscapetools)
+library("rjson")
+library(gsubfn)
+library(ggplot2)
+library(plotly)
+# Requirements for the Rao
+library(BBmisc)
+library(picante)
+library(climateStability)
+library(raster)
+library(terra)
+# To install locally the package
+attach(environment(), name = "package:pkg")
+# Path to the spectralrao-master folder
+sys.source("./spectralrao-master/multidistances.r", envir = as.environment("package:pkg"))
+sys.source("./spectralrao-master/spectralrao.r", envir = as.environment("package:pkg"))
+```
+
+# Interpret the data saved on the JSON files from Hovernet
+Read the file
+```{r}
+testing_image_cells <- fromJSON(file = "./data/testing_image.json")
+name <- basename("./data/testing_image.json")
+```
+
+Adjust the file to a data frame
+```{r}
+datalist <- list()
+for (x in 1:length(testing_image_cells)){
+  # Type
+  type <- testing_image_cells[[x]]$properties$classification[[1]]
+  # Position
+  posx <- round(as.numeric(mean(do.call(rbind, testing_image_cells[[x]]$geometry$coordinates[[1]])[,2])))
+  posy <- round(as.numeric(mean(do.call(rbind, testing_image_cells[[x]]$geometry$coordinates[[1]])[,1])))
+  datalist[[x]] <- c("cell_ID" = x, 'x_pos' = posx, 'y_pos' = posy, 'cell_type' = type)
+}
+df <- data.frame(matrix(unlist(datalist), nrow=length(datalist), byrow=TRUE))
+colnames(df) <- c("cell_ID","x_pos", "y_pos","cell_type")
+
+df[df[4] == 'nolabe',4] <- 'No label'
+df[df[4] == 'neopla',4] <- 'Neoplastic'
+df[df[4] == 'inflam',4] <- 'Inflammatory'
+df[df[4] == 'connec',4] <- 'Connective'
+df[df[4] == 'necros',4] <- 'Dead'
+df[df[4] == 'no-neo',4] <- 'Non-Neoplastic Epithelial'
+
+df[,1] <- as.numeric(df[,1])
+df[,2] <- as.numeric(df[,2])
+df[,3] <- as.numeric(df[,3])
+
+write.csv(df,"./data/testing_image_cells.csv", row.names = FALSE)
+
+```
+
+# Rao Plot
+```{r}
+#xbin size
+xbinsize = 200;
+# create a raster
+r <- raster(ncols=100, nrows=100, xmn = min(df[,2]), xmx = max(df[,2]), ymn = min(df[,3]), ymx = max(df[,3]))
+d1_sim_type <- data.frame("x" = df$x_pos, "y" = df$y_pos, "cell" = df$cell_type)
+# Levels: CD20+ = 1; CD4+ = 2; CD8+ = 3; Stroma+ = 4; Tumor+ = 5;
+d1_sim_NL <- d1_sim_type[d1_sim_type$cell == "No label",]
+d1_sim_Neo <- d1_sim_type[d1_sim_type$cell == "Neoplastic",]
+d1_sim_Infl <- d1_sim_type[d1_sim_type$cell == "Inflammatory",]
+d1_sim_Conn <- d1_sim_type[d1_sim_type$cell == "Connective",]
+d1_sim_Dead <- d1_sim_type[d1_sim_type$cell == "Dead",]
+d1_sim_Epith <- d1_sim_type[d1_sim_type$cell == "Non-Neoplastic Epithelial",]
+#
+d1_simNL <- d1_sim_NL[,c(1,2)]
+d1_simNeo <- d1_sim_Neo[,c(1,2)]
+d1_simInfl <- d1_sim_Infl[,c(1,2)]
+d1_simConn <- d1_sim_Conn[,c(1,2)]
+d1_simDead <- d1_sim_Dead[,c(1,2)]
+d1_simEpith <- d1_sim_Epith[,c(1,2)]
+#
+xy1 <- cbind(d1_simNeo[,1], d1_simNeo[,2])
+xy2 <- cbind(d1_simInfl[,1], d1_simInfl[,2])
+xy3 <- cbind(d1_simConn[,1], d1_simConn[,2])
+xy4 <- cbind(d1_simDead[,1], d1_simDead[,2])
+xy5 <- cbind(d1_simEpith[,1], d1_simEpith[,2])
+#
+r1 <- rasterize(xy1, r, fun = "count")
+r2 <- rasterize(xy2, r, fun = "count")
+r3 <- rasterize(xy3, r, fun = "count")
+r4 <- rasterize(xy4, r, fun = "count")
+r5 <- rasterize(xy5, r, fun = "count")
+
+# All cells
+rao_mat1 <- c(r1,r2,r3,r4,r5)
+raomatrix1<-spectralrao(input=rao_mat1,window=3,mode="multidimension",distance_m="euclidean",lambda=0.5,na.tolerance=0.85,rescale=FALSE, shannon=F)
+spplot(rescale0to1(rast(raomatrix1[[1]])), col.regions = c(topo.colors(50),rev(heat.colors(50))), at=seq(0,1, by=0.01), xlab = "Rao (x-axis)", ylab = "Rao (y-axis)",main=list(label="All cells",cex=2))
+
+# Inflammatory
+rao_mat2 <- c(if(!all(is.na(xy2))){r2})
+raomatrix2<-spectralrao(input=rao_mat2,window=3,mode="multidimension",distance_m="euclidean",lambda=0.5,na.tolerance=0.85,rescale=FALSE)
+spplot(rescale0to1(rast(raomatrix2[[1]])), col.regions = c(topo.colors(50),rev(heat.colors(50))), at=seq(0,1, by=0.01), xlab = "Rao (x-axis)", ylab = "Rao (y-axis)",main=list(label="Inflammatory",cex=2))
+
+# Connective
+rao_mat3 <- c(if(!all(is.na(xy3))){r3})
+raomatrix3<-spectralrao(input=rao_mat3,window=3,mode="multidimension",distance_m="euclidean",lambda=0.5,na.tolerance=0.85,rescale=FALSE)
+spplot(rescale0to1(rast(raomatrix3[[1]])), col.regions = c(topo.colors(50),rev(heat.colors(50))), at=seq(0,1, by=0.01), xlab = "Rao (x-axis)", ylab = "Rao (y-axis)",main=list(label="Connective",cex=2))
+
+# Dead
+raomatrix4<-spectralrao(input=r4,window=3,mode="classic",distance_m="euclidean",lambda=0.5,na.tolerance=0.85,rescale=FALSE)
+spplot(rescale0to1(rast(raomatrix4[[1]])), col.regions = c(topo.colors(50),rev(heat.colors(50))), at=seq(0,1, by=0.01), xlab = "Rao (x-axis)", ylab = "Rao (y-axis)",main=list(label="Dead",cex=2))
+
+# Non-Neoplastic Epithelial
+raomatrix5<-spectralrao(input=r5,window=3,mode="classic",distance_m="euclidean",lambda=0.5,na.tolerance=0.85,rescale=FALSE)
+spplot(rescale0to1(rast(raomatrix5[[1]])), col.regions = c(topo.colors(50),rev(heat.colors(50))), at=seq(0,1, by=0.01), xlab = "Rao (x-axis)", ylab = "Rao (y-axis)",main=list(label="Non-Neoplastic Epithelial",cex=2))
+
+# Neoplastic 
+raomatrix6<-spectralrao(input=r1,window=3,mode="classic",distance_m="euclidean",lambda=0.5,na.tolerance=0.85,rescale=FALSE)
+spplot(rescale0to1(rast(raomatrix5[[1]])), col.regions = c(topo.colors(50),rev(heat.colors(50))), at=seq(0,1, by=0.01), xlab = "Rao (x-axis)", ylab = "Rao (y-axis)",main=list(label="Neoplastic",cex=2))
+
+# Neoplastic + Inflammatory
+rao_mat7 <- c(if(!all(is.na(xy1))){r1},if(!all(is.na(xy2))){r2})
+raomatrix7<-spectralrao(input=rao_mat7,window=3,mode="multidimension",distance_m="euclidean",lambda=0.5,na.tolerance=0.85,rescale=FALSE, shannon=F)
+spplot(rescale0to1(rast(raomatrix7[[1]])), col.regions = c(topo.colors(50),rev(heat.colors(50))), at=seq(0,1, by=0.01), xlab = "Rao (x-axis)", ylab = "Rao (y-axis)",main=list(label="Inflammatory + Neoplastic",cex=2))
+
+# Combine 
+spplot(c(rescale0to1(rast(raomatrix1[[1]])),rescale0to1(rast(raomatrix2[[1]])),rescale0to1(rast(raomatrix3[[1]])),rescale0to1(rast(raomatrix4[[1]])),rescale0to1(rast(raomatrix5[[1]])),rescale0to1(rast(raomatrix6[[1]])),rescale0to1(rast(raomatrix7[[1]]))), names.attr = c("All cells", "Inflammatory","Connective","Dead","Non-Neoplastic Epithelial","Neoplastic","Inflammatory + Neoplastic"), col.regions = c(topo.colors(50),rev(heat.colors(50))), at=seq(0,1, by=0.01))
+
+
+```
+# Simple Rao plot example
+```{r}
+raomatrix2<-spectralrao(input=list(r1,r2,r3,r4,r5),window=3,mode="multidimension",distance_m="euclidean",lambda=0.5,na.tolerance=0.85,rescale=FALSE)
+raster::plot(raster(raomatrix2[[1]]))
+```
